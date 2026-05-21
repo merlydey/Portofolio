@@ -1,290 +1,162 @@
 import React, { useEffect, useState } from "react";
-import { ExternalLink, Github, PlusCircle, Edit2, Trash2, X } from "lucide-react";
+import { ExternalLink, Github, RefreshCw } from "lucide-react";
+import { fetchPortfolioProjects } from "@/lib/odooApi";
 
-const STORAGE_KEY = "my_projects_v1";
+const normalizeTags = (value) => {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
 
-const defaultProjects = [
-  {
-    id: Date.now(),
-    title: "SaaS Landing Page",
-    description: "Contoh project awal",
-    image: "",
-    tags: ["React", "TailwindCSS"],
-    demoUrl: "",
-    githubUrl: "",
-  },
-];
+  return String(value || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+};
 
-const readFileAsDataURL = (file) =>
-  new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(reader.result);
-    reader.onerror = () => rej(new Error("File read error"));
-    reader.readAsDataURL(file);
-  });
+const normalizeProject = (project) => ({
+  id: project.id,
+  title: project.name || project.title || "Untitled project",
+  description: project.description || "",
+  imageUrl: project.image_url || project.imageUrl || "",
+  tags: normalizeTags(project.tags),
+  demoUrl: project.demo_url || project.demoUrl || "",
+  githubUrl: project.github_url || project.githubUrl || "",
+});
 
 export const ProjectsSection = () => {
   const [projects, setProjects] = useState([]);
-  const [editing, setEditing] = useState(null); // project id or null
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    image: "",
-    tags: "",
-    demoUrl: "",
-    githubUrl: "",
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    setProjects(stored ? JSON.parse(stored) : defaultProjects);
-  }, []);
+  const loadProjects = async (signal) => {
+    setIsLoading(true);
+    setError("");
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }, [projects]);
-
-  const openNew = () => {
-    setEditing(null);
-    setForm({
-      title: "",
-      description: "",
-      image: "",
-      tags: "",
-      demoUrl: "",
-      githubUrl: "",
-    });
-    setIsFormOpen(true);
-  };
-
-  const openEdit = (p) => {
-    setEditing(p.id);
-    setForm({
-      title: p.title,
-      description: p.description,
-      image: p.image || "",
-      tags: (p.tags || []).join(", "),
-      demoUrl: p.demoUrl || "",
-      githubUrl: p.githubUrl || "",
-    });
-    setIsFormOpen(true);
-  };
-
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
     try {
-      const dataUrl = await readFileAsDataURL(file);
-      setForm((s) => ({ ...s, image: dataUrl }));
-    } catch {
-      // ignore
+      const data = await fetchPortfolioProjects(signal);
+      setProjects(data.map(normalizeProject));
+    } catch (err) {
+      if (err.name === "AbortError") {
+        return;
+      }
+
+      setError(err.message || "Failed to load projects from Odoo.");
+    } finally {
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      image: form.image,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      demoUrl: form.demoUrl.trim(),
-      githubUrl: form.githubUrl.trim(),
-    };
-    if (!payload.title) return;
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadProjects(controller.signal);
 
-    if (editing) {
-      setProjects((prev) => prev.map((p) => (p.id === editing ? { ...p, ...payload } : p)));
-    } else {
-      setProjects((prev) => [{ id: Date.now(), ...payload }, ...prev]);
-    }
-
-    setIsFormOpen(false);
-    setEditing(null);
-  };
-
-  const handleDelete = (id) => {
-    if (!confirm("Hapus project ini?")) return;
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-  };
+    return () => controller.abort();
+  }, []);
 
   return (
     <section id="projects" className="py-24 px-4 relative">
       <div className="container mx-auto max-w-6xl">
-        {/* Header centered */}
         <div className="text-center mb-6">
           <h2 className="text-3xl md:text-4xl font-bold">
             Featured <span className="text-primary">Projects</span>
           </h2>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Manage projects below. Upload an image, set description, tags, demo and repo links.
+            Projects below are loaded from your Odoo backend. Manage them from the
+            Odoo admin panel and they will appear here automatically.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
-            <article
-              key={project.id}
-              className="group bg-card rounded-lg overflow-hidden shadow-xs transform transition-transform duration-300 hover:-translate-y-1"
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
+            <p>{error}</p>
+            <button
+              onClick={() => void loadProjects()}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2 text-red-100 transition-colors hover:bg-red-500/10"
+              type="button"
             >
-              <div className="h-44 bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
-                {project.image ? (
-                  // eslint-disable-next-line jsx-a11y/img-redundant-alt
-                  <img src={project.image} alt={project.title + " image"} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center text-sm text-muted-foreground px-4">No image</div>
-                )}
-              </div>
+              <RefreshCw size={14} /> Retry
+            </button>
+          </div>
+        )}
 
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="pr-4">
-                    <h3 className="text-lg font-semibold">{project.title}</h3>
-                    <p className="text-muted-foreground text-sm mt-1 line-clamp-3">{project.description}</p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {(project.tags || []).map((t) => (
-                        <span key={t} className="px-2 py-1 text-xs bg-primary/20 rounded-full">
-                          {t}
-                        </span>
-                      ))}
+        {isLoading ? (
+          <div className="py-12 text-center text-muted-foreground">
+            Loading projects from Odoo...
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            No published projects were returned by the Odoo API yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <article
+                key={project.id}
+                className="group bg-card rounded-lg overflow-hidden shadow-xs transform transition-transform duration-300 hover:-translate-y-1"
+              >
+                <div className="h-44 bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+                  {project.imageUrl ? (
+                    <img
+                      src={project.imageUrl}
+                      alt={`${project.title} preview`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center text-sm text-muted-foreground px-4">
+                      No image
                     </div>
-                  </div>
+                  )}
+                </div>
 
-                  <div className="flex flex-col items-end gap-2 ml-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEdit(project)}
-                        className="p-2 rounded-md hover:bg-primary/10"
-                        aria-label="Edit"
-                        title="Edit"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(project.id)}
-                        className="p-2 rounded-md hover:bg-red-50 text-red-500"
-                        aria-label="Delete"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="pr-2">
+                      <h3 className="text-lg font-semibold">{project.title}</h3>
+                      <p className="text-muted-foreground text-sm mt-1 line-clamp-3">
+                        {project.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {project.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-1 text-xs bg-primary/20 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-col items-end gap-3 shrink-0">
                       {project.demoUrl && (
-                        <a href={project.demoUrl} target="_blank" rel="noopener noreferrer" title="Open demo">
+                        <a
+                          href={project.demoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open demo"
+                          className="p-2 rounded-md hover:bg-primary/10"
+                        >
                           <ExternalLink size={16} />
                         </a>
                       )}
                       {project.githubUrl && (
-                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" title="Open repo">
+                        <a
+                          href={project.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open repository"
+                          className="p-2 rounded-md hover:bg-primary/10"
+                        >
                           <Github size={16} />
                         </a>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {/* Add Project button centered under the grid */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={openNew}
-            className="inline-flex items-center gap-2 cosmic-button px-4 py-2"
-            title="Add project"
-          >
-            <PlusCircle size={16} /> Add Project
-          </button>
-        </div>
-
-        {/* Form modal/drawer */}
-        {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setIsFormOpen(false)} />
-            <div className="relative bg-card rounded-lg shadow-lg w-full max-w-2xl p-6 z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold">{editing ? "Edit Project" : "New Project"}</h4>
-                <button onClick={() => setIsFormOpen(false)} className="p-1 rounded hover:bg-gray-200">
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Title</label>
-                  <input
-                    className="w-full px-3 py-2 rounded border"
-                    value={form.title}
-                    onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    className="w-full px-3 py-2 rounded border"
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Tags (comma separated)</label>
-                  <input
-                    className="w-full px-3 py-2 rounded border"
-                    value={form.tags}
-                    onChange={(e) => setForm((s) => ({ ...s, tags: e.target.value }))}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Demo URL</label>
-                    <input
-                      className="w-full px-3 py-2 rounded border"
-                      value={form.demoUrl}
-                      onChange={(e) => setForm((s) => ({ ...s, demoUrl: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Github URL</label>
-                    <input
-                      className="w-full px-3 py-2 rounded border"
-                      value={form.githubUrl}
-                      onChange={(e) => setForm((s) => ({ ...s, githubUrl: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Image (optional)</label>
-                  <div className="flex items-center gap-3">
-                    <input type="file" accept="image/*" onChange={handleFile} />
-                    {form.image && (
-                      <img src={form.image} alt="preview" className="h-12 w-20 object-cover rounded" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-3">
-                  <button type="button" onClick={() => setIsFormOpen(false)} className="px-3 py-2 rounded border">
-                    Cancel
-                  </button>
-                  <button type="submit" className="cosmic-button px-4 py-2">
-                    {editing ? "Update" : "Create"}
-                  </button>
-                </div>
-              </form>
-            </div>
+              </article>
+            ))}
           </div>
         )}
       </div>

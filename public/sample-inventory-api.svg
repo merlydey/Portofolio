@@ -1,0 +1,29 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" fill="#111827"/>
+  <rect x="80" y="80" width="1040" height="640" rx="28" fill="#172033" stroke="#374151" stroke-width="2"/>
+  <rect x="120" y="120" width="440" height="560" rx="22" fill="#0F172A"/>
+  <rect x="600" y="120" width="480" height="180" rx="22" fill="url(#paint0_linear)"/>
+  <rect x="600" y="338" width="480" height="342" rx="22" fill="#0F172A"/>
+  <rect x="170" y="180" width="140" height="100" rx="16" fill="#22C55E"/>
+  <rect x="340" y="180" width="140" height="100" rx="16" fill="#F59E0B"/>
+  <rect x="170" y="320" width="140" height="100" rx="16" fill="#0EA5E9"/>
+  <rect x="340" y="320" width="140" height="100" rx="16" fill="#EF4444"/>
+  <rect x="170" y="470" width="310" height="18" rx="9" fill="#475569"/>
+  <rect x="170" y="510" width="240" height="18" rx="9" fill="#334155"/>
+  <rect x="170" y="550" width="290" height="18" rx="9" fill="#334155"/>
+  <text x="640" y="196" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="700">Inventory API</text>
+  <text x="640" y="236" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="22">Stock sync, warehouse events, and order tracking</text>
+  <rect x="640" y="388" width="160" height="20" rx="10" fill="#60A5FA"/>
+  <rect x="640" y="430" width="320" height="18" rx="9" fill="#475569"/>
+  <rect x="640" y="470" width="280" height="18" rx="9" fill="#475569"/>
+  <rect x="640" y="510" width="360" height="18" rx="9" fill="#475569"/>
+  <rect x="640" y="580" width="400" height="12" rx="6" fill="#1F2937"/>
+  <rect x="640" y="580" width="290" height="12" rx="6" fill="#22C55E"/>
+  <text x="640" y="620" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="22">91% warehouse sync success</text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="600" y1="120" x2="1080" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F97316"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+</svg>

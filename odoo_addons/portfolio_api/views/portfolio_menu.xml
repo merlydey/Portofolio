@@ -1,0 +1,19 @@
+<odoo>
+    <menuitem id="portfolio_root_menu" name="Portfolio" sequence="50"/>
+
+    <menuitem
+        id="portfolio_projects_menu"
+        name="Projects"
+        parent="portfolio_root_menu"
+        action="portfolio_project_action"
+        sequence="10"
+    />
+
+    <menuitem
+        id="portfolio_contacts_menu"
+        name="Contacts"
+        parent="portfolio_root_menu"
+        action="portfolio_contact_action"
+        sequence="20"
+    />
+</odoo>

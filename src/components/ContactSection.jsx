@@ -1,37 +1,50 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Linkedin, Instagram, Facebook } from "lucide-react";
+import { submitPortfolioContact } from "@/lib/odooApi";
 
 export const ContactSection = () => {
-    console.log("ContactSection mounted");
-
     const [form, setForm] = useState({ name: "", email: "", message: "" });
     const [status, setStatus] = useState(null);
-
-    const WHATSAPP_NUMBER = "6285694868473";
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!form.name || !form.email || !form.message) {
             setStatus({ type: "error", text: "Please fill all fields." });
             return;
         }
-        
-        //Buat pesan ke WA
-        const message = `Nama: ${form.name}\nEmail: ${form.email}\nPesan: ${form.message}`;
-        const encoded = encodeURIComponent(message);
-        const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`;
 
-         // buka WhatsApp (web/app) di tab baru
-        window.open(waUrl, "_blank");
+        setIsSubmitting(true);
+        setStatus(null);
 
-        setStatus({ type: "success", text: "Message sent. Thank you!" });
-        setForm({ name: "", email: "", message: "" });
+        try {
+            const response = await submitPortfolioContact({
+                name: form.name.trim(),
+                email: form.email.trim(),
+                message: form.message.trim(),
+                source: "portfolio-react",
+            });
+
+            setStatus({
+                type: "success",
+                text: response?.message || "Message sent successfully.",
+            });
+            setForm({ name: "", email: "", message: "" });
+        } catch (error) {
+            setStatus({
+                type: "error",
+                text: error.message || "Failed to send message to Odoo.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+
         setTimeout(() => setStatus(null), 4000);
     };
 
@@ -44,7 +57,7 @@ export const ContactSection = () => {
 
                 <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto ">
                     Have a project in mind or want to collaborate? Feel free to reach out.
-                    I'm always open to discussing new opportunities.
+                    Messages sent from this form will be stored in your Odoo backend.
                 </p>
 
                 {/* grid: gunakan 5 kolom di md agar kolom form sedikit lebih lebar (sekitar 40%) */}
@@ -185,9 +198,10 @@ export const ContactSection = () => {
                             <div className="flex items-center justify-between">
                                 <button
                                     type="submit"
+                                    disabled={isSubmitting}
                                     className="cosmic-button px-4 py-2 text-sm"
                                 >
-                                    Send
+                                    {isSubmitting ? "Sending..." : "Send"}
                                 </button>
 
                                 {status && (
